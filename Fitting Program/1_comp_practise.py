@@ -65,8 +65,10 @@ with fits.open(wave_path) as hdul_wave:
 p_wave_scaled = p_wavelength / 1e4 
 
 # Set flag values for smallest χ²
-smallest_chi = np.inf
-smallest_name = "A"
+small_chi = np.inf
+small_flux = None
+small_scale = None
+small_model = None
 
 # Iterating through all files in the folder and load flux data
 for model in p_path.rglob("*.fits"):
@@ -95,11 +97,21 @@ for model in p_path.rglob("*.fits"):
     result = minimize_scalar(calc_chi2, bounds = (lower_bound, upper_bound), method = 'bounded', args = (p_flux_clean, j_flux_clean, j_flux_err))
 
     # Finding smallest χ²
-    if result.fun < smallest_chi:
-        smallest_chi = result.fun
-        smallest_name = model
+    if result.fun < small_chi:
+        small_chi = result.fun
+        small_scale = result.x
+        small_flux = p_flux_clean
+        small_model = model
 
 # endregion
 
-print(smallest_chi)
-print(smallest_name)
+# Plot best comparison
+plt.figure()
+plt.plot(j_wave_clean, j_flux_clean, color = 'blue', label = 'JWST NIRSpec')
+plt.plot(j_wave_clean, small_scale * small_flux, color = 'red', label = f"PHOENIX Best Model R = {small_scale}")
+plt.xlabel(r"Wavelength ($\mu$m)")
+plt.ylabel("Flux (mJy)")
+plt.legend()
+plt.show()
+
+print(small_model)
