@@ -1,0 +1,9 @@
+# Ignore everything in the root folder by default
+*
+
+# Except the Fitting Program folder and its contents
+!/Fitting Program/
+!/Fitting Program/**
+
+# Keep the gitignore file tracked
+!.gitignore
