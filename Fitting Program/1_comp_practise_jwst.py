@@ -7,6 +7,14 @@ from astropy.io import fits
 from pathlib import Path
 import numpy as np
 
+# region Constants
+radial_vel = 19.20
+c_kms = 299792.458
+beta = radial_vel / c_kms
+r_star_m = 0.33 * 6.597e8
+dist_m = 8.07 * 3.0857e16
+# endregion
+
 # region χ² minimisation function for scaling factor
 def calc_chi2(scale, model_flux, data_flux, data_err):
     scaled_model = scale * model_flux
@@ -51,8 +59,6 @@ j_wave_clean = j_wavelength[valid]
 j_flux_clean = j_flux[valid] * 1e3
 j_flux_err = j_flux_err[valid] * 1e3
 
-print(np.min(j_wave_clean))
-print(np.max(j_wave_clean))
 # endregion
 
 # region Loading and trying PHOENIX models 
@@ -63,6 +69,10 @@ p_path = Path(p_folder)
 minimum_temperature = 2300
 maximum_temperature = 4300
 
+# Prescribe appropriate log(g) range
+min_logg = 4.00
+max_logg = 5.50
+
 # Load wavelength grid for PHOENIX
 wave_path = Path("Z:/jameskirk/MSci Project 26-27/PHOENIX High Resolution Z0 Models/PHOENIX-ACES-AGSS-COND-2011/Z-0.0/WAVE_PHOENIX-ACES-AGSS-COND-2011.fits")
 with fits.open(wave_path) as hdul_wave:
@@ -71,11 +81,15 @@ with fits.open(wave_path) as hdul_wave:
 # Correct for units Å --> μm
 p_wave_scaled = p_wavelength / 1e4 
 
+# Apply doppler correction for radial movements
+p_wave_clean = p_wave_scaled * np.sqrt((1 + beta) / (1 - beta))
+
 # Set flag values for smallest χ²
 small_chi = np.inf
-small_flux = None
+small_temp = None
 small_scale = None
-small_model = None
+small_logg = None
+small_flux = None
 
 # Iterate through sorted model files in the prescribed temperature range
 model_files = sorted(p_path.rglob("*.fits"))
@@ -87,15 +101,17 @@ for model in model_files:
     if model.name == wave_path.name:
         continue
 
-    # Temperature from filename
+    # Temperature and log(g) from filename
     model_temperature = int(model.name[3:8])
-    print(model_temperature)
+    model_logg = float(model.name[9:13])
     
-    # Only use temperature models in reasonable range
-    if model_temperature < minimum_temperature:
+    # Only use temperature and log(g) models in reasonable range
+    if (model_temperature < minimum_temperature) or (model_logg < min_logg) or (model_logg > max_logg):
         continue
     if model_temperature > maximum_temperature:
         break
+
+    print(f"Loading Model T = {model_temperature}K, log(g) = {model_logg}.")
 
     with fits.open(model) as hdul:
         p_flux = hdul[0].data          
@@ -104,8 +120,6 @@ for model in model_files:
     p_flux_mJy = 0.333564 * p_flux * (p_wavelength ** 2)
 
     # Scale by R2∗/dist^2
-    r_star_m = 0.33 * 6.597e8
-    dist_m = 8.07 * 3.0857e16
     p_flux_scaled = p_flux_mJy * ((r_star_m / dist_m) ** 2)
 
     # Smooth the flux with a SavGol filter
@@ -114,7 +128,7 @@ for model in model_files:
     p_flux_smoothed = savgol_filter(p_flux_scaled, window_length = window_length, polyorder = polyorder)
 
     # Interpolate onto same grid as JWST data
-    p_flux_clean = np.interp(j_wave_clean, p_wave_scaled, p_flux_smoothed)
+    p_flux_clean = np.interp(j_wave_clean, p_wave_clean, p_flux_smoothed)
 
     # Fitting scaling factor and determining χ² using bounds from Moran et al. (2023)
     lower_bound = 0.9
@@ -124,20 +138,21 @@ for model in model_files:
     # Finding smallest χ²
     if result.fun < small_chi:
         small_chi = result.fun
-        print(small_chi)
         small_scale = result.x
+        small_temp = model_temperature
+        small_logg = model_logg
         small_flux = p_flux_clean
-        small_model = model
+        print(f"New smallest χ²: {small_chi}.")
 
 # endregion
+
+print(f"Optimised Model T = {small_temp}, log(g) = {small_logg}, R = {small_scale}.")
 
 # Plot best comparison
 plt.figure()
 plt.plot(j_wave_clean, j_flux_clean, color = 'blue', label = 'JWST NIRSpec')
-plt.plot(j_wave_clean, small_scale * small_flux, color = 'red', label = f"PHOENIX Best Model R = {small_scale}")
+plt.plot(j_wave_clean, small_scale * small_flux, color = 'red', label = f"PHOENIX Best Model")
 plt.xlabel(r"Wavelength ($\mu$m)")
 plt.ylabel("Flux (mJy)")
 plt.legend()
 plt.show()
-
-print(small_model)
