@@ -7,5 +7,8 @@
 !/stctm Fitting/
 !/stctm Fitting/**
 
+# Ignore PHOENIX master grid inside stctm folder
+/stctm Fitting/msg_grids/
+
 # Keep the gitignore file tracked
 !.gitignore

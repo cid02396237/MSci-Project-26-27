@@ -68,7 +68,7 @@ p_path = Path(p_folder)
 
 # Prescribe the temperature range for relevant models (K)
 minimum_temperature = 3000
-maximum_temperature = 4000
+maximum_temperature = 3700
 
 # Prescribe appropriate log(g) range
 min_logg = 4.00

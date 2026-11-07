@@ -39,8 +39,8 @@ p_folder = "Z:/jameskirk/MSci Project 26-27/PHOENIX High Resolution Z0 Models/PH
 p_path = Path(p_folder)
 
 # Prescribe the temperature range for relevant models (K)
-minimum_temperature = 2300
-maximum_temperature = 4300
+minimum_temperature = 3000
+maximum_temperature = 3700
 
 # Prescribe appropriate log(g) range
 min_logg = 4.00

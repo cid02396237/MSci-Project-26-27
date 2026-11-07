@@ -1,4 +1,4 @@
-# First test module for reformatting JWST data into stctm csv st
+# First test module for reformatting JWST data into stctm csv
 from scipy.ndimage import median_filter
 from astropy.table import Table
 from astropy.io import fits
@@ -48,10 +48,9 @@ j_flux_err = j_flux_err[valid]
 
 # Convert flux to 10^-10 erg s^-1 cm^-2 micron^-1
 wave = j_wave_clean
-print(wave)
-yval = 2.99792458e-19 * j_flux_clean / j_wave_clean ** 2
-# Define uncertainties
-yerrLow = 2.99792458e-19 * j_flux_err / j_wave_clean**2
+conversion = 29.9792458 / wave**2
+yval = j_flux_clean * conversion
+yerrLow = j_flux_err * conversion
 yerrUpp = yerrLow.copy()
 
 # Estimate the wavelength bin edges
